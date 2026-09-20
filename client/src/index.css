@@ -1,0 +1,7 @@
+@import 'react-toastify/dist/ReactToastify.css';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+body {
+  @apply bg-slate-50 text-slate-800 antialiased font-sans min-h-screen;
+}

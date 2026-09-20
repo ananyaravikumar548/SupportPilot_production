@@ -1,0 +1,16 @@
+# Environment
+.env
+
+# Python
+venv/
+__pycache__/
+*.py[cod]
+
+# Django
+db.sqlite3
+
+# Archives
+*.zip
+
+# macOS
+.DS_Store

@@ -1,0 +1,30 @@
+export const mockUsers = [
+  {
+    id: 'usr_1',
+    name: 'Sarah Johnson',
+    email: 'customer@demo.com',
+    password: 'password123',
+    role: 'customer',
+    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150',
+  },
+  {
+    id: 'usr_2',
+    name: 'James Wilson',
+    email: 'agent@demo.com',
+    password: 'password123',
+    role: 'agent',
+    designation: 'Senior Support Agent',
+    status: 'Online',
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+  },
+  {
+    id: 'usr_3',
+    name: 'Admin User',
+    email: 'admin@demo.com',
+    password: 'password123',
+    role: 'admin',
+    designation: 'Super Admin',
+    status: 'Online',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
+  },
+];
