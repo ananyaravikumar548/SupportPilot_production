@@ -84,7 +84,7 @@ class Ticket(Document):
     )
 
     customer_id = StringField(required=True)
-    demo_id = StringField(required=False, unique=True)
+    demo_id = StringField(required=False, unique=True, sparse=True)
     title = StringField(max_length=200, required=True)
     description = StringField(required=True)
     category = StringField(max_length=100)
