@@ -1,20 +1,32 @@
 import os
-import numpy as np
-import faiss
-from sentence_transformers import SentenceTransformer
 
-# Load embedding model globally once
-embedder = SentenceTransformer('all-MiniLM-L6-v2')
+_embedder = None
+_kb_loaded = False
+
+
+def _get_embedder():
+    global _embedder
+
+    if _embedder is None:
+        from sentence_transformers import SentenceTransformer
+
+        _embedder = SentenceTransformer('all-MiniLM-L6-v2')
+
+    return _embedder
 
 
 class VectorStore:
     def __init__(self, dimension=384):
+        import faiss
+
         self.dimension = dimension
         self.index = faiss.IndexFlatL2(dimension)
         self.documents = []
 
     def reset(self):
         """Clears the FAISS index and documents list."""
+        import faiss
+
         self.index = faiss.IndexFlatL2(self.dimension)
         self.documents = []
 
@@ -26,14 +38,14 @@ class VectorStore:
             return
         self.documents.extend(docs)
         texts = [doc['text'] for doc in docs]
-        embeddings = embedder.encode(texts, convert_to_numpy=True)
+        embeddings = _get_embedder().encode(texts, convert_to_numpy=True)
         self.index.add(embeddings.astype('float32'))
 
     def search(self, query, top_k=3, score_threshold=1.2):
         if self.index.ntotal == 0:
             return []
         
-        query_vector = embedder.encode([query], convert_to_numpy=True).astype('float32')
+        query_vector = _get_embedder().encode([query], convert_to_numpy=True).astype('float32')
         distances, indices = self.index.search(query_vector, top_k)
         
         results = []
@@ -54,6 +66,8 @@ rag_store = VectorStore()
 
 
 def load_kb_articles():
+    global _kb_loaded
+
     rag_store.reset()
 
     try:
@@ -93,6 +107,7 @@ def load_kb_articles():
 
         if docs:
             rag_store.add_documents(docs)
+            _kb_loaded = True
             return
     except Exception as e:
         print("Database KB query warning:", e)
@@ -122,12 +137,16 @@ def load_kb_articles():
         }
     ]
     rag_store.add_documents(default_articles)
+    _kb_loaded = True
 
 
 def get_rag_resolution(ticket_title, ticket_description=""):
     """
     Search vector store and extract exact content from matched Knowledge Base articles.
     """
+    if not _kb_loaded:
+        load_kb_articles()
+
     query = f"{ticket_title} {ticket_description}".strip()
     matches = rag_store.search(query, top_k=1)
 
@@ -176,6 +195,3 @@ def generate_solution(ticket_title, ticket_description=""):
         "We could not generate a detailed automated solution. "
         "Please review the ticket with a support specialist."
     )
-
-# Initialize vector index on module load
-load_kb_articles()
