@@ -13,4 +13,5 @@ db.sqlite3
 *.zip
 
 # macOS
-.DS_Store
+.DS_Storevenv/
+Server/venv/
