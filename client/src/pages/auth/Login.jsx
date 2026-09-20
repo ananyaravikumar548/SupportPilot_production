@@ -13,6 +13,10 @@ export default function Login() {
 
   const onSubmit = async (data) => {
     try {
+      console.log('LOGIN SUBMITTED', {
+        email: data.email,
+        passwordProvided: Boolean(data.password),
+      });
       console.log('STEP 1 - Sending login request...');
       const response = await API.post('/token/', { email: data.email, password: data.password });
       console.log('STEP 2 - Token received:', response.data);
@@ -38,6 +42,10 @@ export default function Login() {
       }
       toast.error('Login Failed');
     }
+  };
+
+  const onInvalidSubmit = (formErrors) => {
+    console.error('LOGIN VALIDATION ERROR:', formErrors);
   };
 
   const demoUsers = [
@@ -107,7 +115,7 @@ export default function Login() {
             <h2 className="text-3xl font-bold tracking-tight text-slate-900">Welcome back.</h2>
             <p className="mt-2 text-sm leading-6 text-slate-500">Sign in to your SupportPilot workspace.</p>
           </div>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+          <form onSubmit={handleSubmit(onSubmit, onInvalidSubmit)} className="space-y-5">
             <div>
               <label className="mb-2 block text-xs font-semibold text-slate-700">Work email</label>
               <div className="relative">
