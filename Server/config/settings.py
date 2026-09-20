@@ -211,6 +211,11 @@ LOGGING = {
     "loggers": {
         "django.request": {
             "handlers": ["console"],
+            "level": "DEBUG",
+            "propagate": False,
+        },
+        "django.db.backends": {
+            "handlers": ["console"],
             "level": "ERROR",
             "propagate": False,
         },
