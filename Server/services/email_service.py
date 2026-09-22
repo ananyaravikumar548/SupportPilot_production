@@ -28,7 +28,7 @@ class EmailService:
                 status="FAILED",
                 sent_at=timezone.now(),
             ).save()
-            return
+            return 0
 
         try:
             delivered_count = send_mail(
@@ -37,7 +37,10 @@ class EmailService:
                 html_message=body_html,
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[recipient_email],
-                fail_silently=False,
+                # Delivery failures must never affect ticket categorization or
+                # assignment. The surrounding exception handler covers any
+                # unexpected mail-backend errors as well.
+                fail_silently=True,
             )
 
             legacy_type = {
@@ -71,6 +74,7 @@ class EmailService:
                     recipient_email,
                     delivered_count,
                 )
+            return delivered_count
         except Exception as exc:
             logger.exception(
                 "Failed to deliver email for ticket %s (recipient=%s)",
@@ -93,6 +97,7 @@ class EmailService:
                     ticket_id,
                     exc,
                 )
+            return 0
 
     @staticmethod
     def dispatch_and_log_email(recipient_email, subject, body_html, event_type, ticket):
