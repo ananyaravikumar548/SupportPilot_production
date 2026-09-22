@@ -5,6 +5,71 @@ from services.embeddings import get_embedding
 _kb_loaded = False
 
 
+# Semantic profiles for the supported ticket categories.  General is the
+# fallback when no profile has a sufficiently strong cosine-similarity match.
+CATEGORY_PROFILES = {
+    "VPN": (
+        "vpn cisco anyconnect globalprotect openvpn tunnel disconnect "
+        "connection drop pulse secure client failed to connect remote access"
+    ),
+    "Network": (
+        "network wifi wi-fi internet connectivity dns latency firewall ip address "
+        "router port timeout unreachable offline ping packet loss"
+    ),
+    "Account": (
+        "account okta sso login single sign-on password reset 2fa mfa "
+        "2-factor authentication access denied locked out profile credential "
+        "permissions user role"
+    ),
+    "Billing": (
+        "billing invoice payment charge credit card subscription refund receipt "
+        "transaction price cost fee plan upgrade payment failure quota"
+    ),
+    "Technical": (
+        "technical software bug crash error code exception stack trace database "
+        "sql mongodb memory leak api gateway deployment build failed code defect"
+    ),
+}
+
+# Pre-compute local FastEmbed vectors once so individual ticket classifications
+# only need to embed the ticket text.
+CATEGORY_VECTORS = {
+    category: np.asarray(get_embedding(description), dtype=np.float32)
+    for category, description in CATEGORY_PROFILES.items()
+}
+
+
+def classify_ticket(ticket_title: str, ticket_description: str = "") -> str:
+    """Classify a ticket into Technical, Account, Network, VPN, Billing, or General."""
+    combined_text = f"{ticket_title or ''} {ticket_description or ''}".strip()
+    if not combined_text:
+        return "General"
+
+    ticket_vector = np.asarray(get_embedding(combined_text), dtype=np.float32)
+    if ticket_vector.size == 0:
+        return "General"
+
+    ticket_norm = np.linalg.norm(ticket_vector)
+    if ticket_norm == 0:
+        return "General"
+
+    best_category = "General"
+    highest_similarity = -1.0
+    for category, category_vector in CATEGORY_VECTORS.items():
+        category_norm = np.linalg.norm(category_vector)
+        if category_norm == 0 or category_vector.shape != ticket_vector.shape:
+            continue
+
+        similarity = np.dot(ticket_vector, category_vector) / (
+            ticket_norm * category_norm
+        )
+        if similarity > highest_similarity:
+            highest_similarity = similarity
+            best_category = category
+
+    return best_category if highest_similarity >= 0.28 else "General"
+
+
 class VectorStore:
     def __init__(self, dimension=384):
         import faiss

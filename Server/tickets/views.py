@@ -13,7 +13,13 @@ from accounts.models import User
 from .models import Ticket, TicketMessage, Article, CategoryTaxonomy, SLAPolicy, Team, Application, AgentWorkflow, AgentExecution, JiraTicket, EmailLog
 from .serializers import TicketSerializer
 # Fixed: Imported get_rag_resolution alongside rag_store and load_kb_articles
-from nlp_engine.rag_service import rag_store, load_kb_articles, get_rag_resolution, generate_solution
+from nlp_engine.rag_service import (
+    classify_ticket,
+    rag_store,
+    load_kb_articles,
+    get_rag_resolution,
+    generate_solution,
+)
 from nlp_engine.agents.orchestrator import MultiAgentOrchestrator
 from services.jira_service import JiraService
 from services.email_service import EmailService
@@ -241,7 +247,10 @@ class TicketViewSet(APIView):
                 ""
             )
             description = getattr(ticket, 'description', '') or request.data.get('description', '')  # type: ignore
-            category = getattr(ticket, 'category', 'General') or request.data.get('category', 'General')  # type: ignore
+            category = classify_ticket(subject, description)
+            ticket.category = category
+            ticket.assigned_team = _assigned_team_for(category)
+            ticket.save()
             automation_executor.submit(
                 run_ticket_automation,
                 ticket_id,
@@ -749,11 +758,9 @@ class PreviewClassifyView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        subject = request.data.get('subject', '').lower()
-        description = request.data.get('description', '').lower()
+        subject = request.data.get('subject', '')
+        description = request.data.get('description', '')
         affected_system = request.data.get('affected_system', '')
-
-        combined_text = f"{subject} {description}".lower()
 
         if affected_system:
             try:
@@ -767,32 +774,18 @@ class PreviewClassifyView(APIView):
             except Exception as e:
                 print("Application lookup warning:", e)
 
-        try:
-            best_match = None
-            highest_hits = 0
-
-            for item in CategoryTaxonomy.objects.filter(is_active=True):  # type: ignore
-                keywords = getattr(item, 'keywords', []) or []
-                hits = sum(1 for kw in keywords if kw and kw.lower() in combined_text)
-
-                if hits > highest_hits:
-                    highest_hits = hits
-                    best_match = getattr(item, 'code', None) or getattr(item, 'category_name', 'General')
-
-            if best_match and highest_hits > 0:
-                confidence = min(0.65 + (highest_hits * 0.10), 0.95)
-                return Response({
-                    "category": best_match,
-                    "confidence": round(confidence, 2),
-                    "matched_by": "KEYWORD_TAXONOMY"
-                }, status=status.HTTP_200_OK)
-        except Exception as e:
-            print("Preview classify error:", e)
+        category = classify_ticket(subject, description)
+        if category != "General":
+            return Response({
+                "category": category,
+                "confidence": 0.80,
+                "matched_by": "FASTEMBED_VECTOR_SIMILARITY",
+            }, status=status.HTTP_200_OK)
 
         return Response({
             "category": "General",
             "confidence": 0.40,
-            "matched_by": "FALLBACK"
+            "matched_by": "FASTEMBED_FALLBACK"
         }, status=status.HTTP_200_OK)
 
 
