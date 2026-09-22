@@ -14,4 +14,4 @@ mongoengine==0.29.1
 certifi==2026.2.25
 requests==2.33.0
 faiss-cpu
-sentence-transformers
+fastembed

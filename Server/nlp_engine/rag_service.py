@@ -1,18 +1,8 @@
-import os
+import numpy as np
 
-_embedder = None
+from services.embeddings import get_embedding
+
 _kb_loaded = False
-
-
-def _get_embedder():
-    global _embedder
-
-    if _embedder is None:
-        from sentence_transformers import SentenceTransformer
-
-        _embedder = SentenceTransformer('all-MiniLM-L6-v2')
-
-    return _embedder
 
 
 class VectorStore:
@@ -38,14 +28,20 @@ class VectorStore:
             return
         self.documents.extend(docs)
         texts = [doc['text'] for doc in docs]
-        embeddings = _get_embedder().encode(texts, convert_to_numpy=True)
-        self.index.add(embeddings.astype('float32'))
+        embeddings = np.asarray(
+            [get_embedding(text) for text in texts], dtype=np.float32
+        )
+        self.index.add(embeddings)
 
     def search(self, query, top_k=3, score_threshold=1.2):
         if self.index.ntotal == 0:
             return []
         
-        query_vector = _get_embedder().encode([query], convert_to_numpy=True).astype('float32')
+        query_embedding = get_embedding(query)
+        if not query_embedding:
+            return []
+
+        query_vector = np.asarray([query_embedding], dtype=np.float32)
         distances, indices = self.index.search(query_vector, top_k)
         
         results = []
